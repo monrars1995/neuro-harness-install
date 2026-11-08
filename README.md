@@ -1,20 +1,22 @@
 # Instalador do Neuro Harness
 
-Este repositório público guarda só os **scripts de instalação** do [Neuro Harness](https://github.com/monrars1995/neuro-harness), o estúdio de agentes de IA para pós-produção de vídeo, em português.
+Este repositório público guarda só os **scripts de instalação** do [Neuro Harness](https://github.com/monrars1995/neuro-harness), o estúdio de agentes de IA para pós-produção de vídeo, em português. Site: [harness.neuros.my](https://harness.neuros.my).
 
 **Os scripts não contêm segredos.** O Neuro Harness e os plugins ficam em repositórios privados. O instalador faz o login no GitHub e baixa o resto com a sua conta, então ela precisa ter acesso.
 
 ## macOS e Linux
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.sh | bash
+curl -fsSL https://harness.neuros.my/install.sh | bash
 ```
 
 ## Windows 10/11 (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.ps1 | iex
+irm https://harness.neuros.my/install.ps1 | iex
 ```
+
+O endereço `harness.neuros.my` serve os scripts deste repositório. Se ele estiver fora do ar, use os mesmos comandos com `https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/` no lugar de `https://harness.neuros.my/`.
 
 ## O que o instalador faz
 
@@ -45,11 +47,11 @@ irm https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/ins
 **Exemplos com opções:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.sh | bash -s -- --sem-app
+curl -fsSL https://harness.neuros.my/install.sh | bash -s -- --sem-app
 ```
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.ps1))) -SemApp
+& ([scriptblock]::Create((irm https://harness.neuros.my/install.ps1))) -SemApp
 ```
 
 **Atualizar:** rode o mesmo comando de novo. O instalador é idempotente e só refaz o que mudou.

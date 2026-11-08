@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Instalador do Neuro Harness para macOS e Linux.
 #
-#   curl -fsSL https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.sh | bash
+#   curl -fsSL https://harness.neuros.my/install.sh | bash
 #
 # Opções (depois de "bash -s --"):
 #   --sem-app           não baixa o app desktop (macOS)
