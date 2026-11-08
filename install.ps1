@@ -9,10 +9,12 @@
 #   -Versao vX.Y.Z     instala uma versão específica (padrão: a última Release)
 #   -SemCredenciais    não importa chaves de API do Hermes e do OpenCode
 #   -SemAbrir          não sobe nem abre o Neuro Harness no fim
+#   -Chave nh_…        usa a chave pessoal de instalação da sua conta Neuro
+#   -GitHub            instala pelo GitHub (conta com acesso aos repositórios), como antes
 #
-# Este script é público e não contém segredos. Os repositórios do Neuro Harness são privados:
-# o script faz o login no GitHub (gh) e usa as suas credenciais para baixar o resto.
-param([switch]$SemApp, [string]$Versao = "", [switch]$SemCredenciais, [switch]$SemAbrir)
+# Este script é público e não contém segredos. Por padrão ele usa a sua conta Neuro: se este
+# computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
+param([switch]$SemApp, [string]$Versao = "", [switch]$SemCredenciais, [switch]$SemAbrir, [string]$Chave = "", [switch]$GitHub)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -20,6 +22,10 @@ $Repo = 'monrars1995/neuro-harness'
 $NH = if ($env:NEURO_HARNESS_HOME) { $env:NEURO_HARNESS_HOME } else { Join-Path $env:USERPROFILE '.neuro-harness' }
 $Src = Join-Path $NH 'src'
 $Bin = Join-Path $NH 'bin'
+$Site = if ($env:NEURO_HARNESS_SITE) { $env:NEURO_HARNESS_SITE.TrimEnd('/') } else { 'https://harness.neuros.my' }
+$AccessFile = Join-Path $NH 'acesso.json'
+if (-not $Chave -and $env:NEURO_HARNESS_CHAVE) { $Chave = $env:NEURO_HARNESS_CHAVE }
+if (-not $Chave -and (Test-Path $AccessFile)) { try { $Chave = (Get-Content $AccessFile -Raw | ConvertFrom-Json).key } catch {} }
 
 function Say($m) { Write-Host "▸ $m" -ForegroundColor White }
 function Ok($m) { Write-Host "  ✓ $m" -ForegroundColor Green }
@@ -34,6 +40,27 @@ Write-Host ""
 Write-Host "neuro harness — instalador (Windows)" -ForegroundColor White
 Write-Host ""
 
+# Modo: conta Neuro (chave pessoal, sem GitHub) ou GitHub (conta com acesso aos repositórios).
+$Mode = 'conta'
+if ($GitHub) { $Mode = 'github' }
+elseif (-not $Chave -and (Has gh)) {
+  gh auth status 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { gh api "repos/$Repo" --jq .full_name 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { $Mode = 'github' } }
+}
+
+function FetchPkg($url, $out) {
+  try { Invoke-WebRequest -Uri $url -Headers @{ Authorization = "Bearer $Chave" } -OutFile $out -UseBasicParsing }
+  catch {
+    $code = 0; try { $code = [int]$_.Exception.Response.StatusCode } catch {}
+    switch ($code) {
+      401 { Die "chave inválida ou revogada. Gere outra em $Site/conta" }
+      403 { Die "o acesso desta conta não está aprovado. Acompanhe em $Site/conta" }
+      501 { Die 'o site ainda não está servindo os pacotes. Tente mais tarde.' }
+      default { Die "não consegui baixar $url ($code)" }
+    }
+  }
+}
+
 # ---------------------------------------------------------------- 1. dependências
 Say 'Conferindo dependências'
 if (-not (Has winget)) { Die 'winget não encontrado. Instale o "Instalador de Aplicativo" pela Microsoft Store e rode de novo.' }
@@ -42,18 +69,62 @@ if (-not (NodeOk)) { $pkgs += 'OpenJS.NodeJS.LTS' }
 if (-not (Has git)) { $pkgs += 'Git.Git' }
 if (-not (PythonOk)) { $pkgs += 'Python.Python.3.12' }
 if (-not (Has ffmpeg)) { $pkgs += 'Gyan.FFmpeg' }
-if (-not (Has gh)) { $pkgs += 'GitHub.cli' }
+if ($Mode -eq 'github' -and -not (Has gh)) { $pkgs += 'GitHub.cli' }
 foreach ($id in $pkgs) {
   Say "Instalando $id"
   winget install --id $id -e --silent --accept-source-agreements --accept-package-agreements | Out-Host
 }
 RefreshPath
 if (-not (NodeOk)) { Die 'Node.js 22+ não encontrado. Feche e abra o PowerShell e rode de novo.' }
-foreach ($c in 'git', 'ffmpeg', 'gh') { if (-not (Has $c)) { Die "$c não encontrado. Feche e abra o PowerShell e rode de novo." } }
+$need = @('git', 'ffmpeg', 'tar'); if ($Mode -eq 'github') { $need += 'gh' }
+foreach ($c in $need) { if (-not (Has $c)) { Die "$c não encontrado. Feche e abra o PowerShell e rode de novo." } }
 if (-not (PythonOk)) { Die 'Python 3.10+ não encontrado. Feche e abra o PowerShell e rode de novo.' }
-Ok "Node $(node -v) · git · Python · FFmpeg · GitHub CLI"
+Ok "Node $(node -v) · git · Python · FFmpeg"
 
-# ---------------------------------------------------------------- 2. login no GitHub
+# ---------------------------------------------------------------- 2. acesso
+New-Item -ItemType Directory -Force -Path $NH, $Bin | Out-Null
+if ($Mode -eq 'conta') {
+  Say 'Conta Neuro'
+  if (-not $Chave) {
+    Write-Host '  O navegador vai abrir para você entrar na sua conta Neuro e confirmar este computador.' -ForegroundColor DarkGray
+    Write-Host "  Ainda sem acesso? Peça em $Site/acesso" -ForegroundColor DarkGray
+    try { $c = Invoke-RestMethod -Method Post -Uri "$Site/api/dispositivo/codigo" -ContentType 'application/json' -Body '{}' }
+    catch { Die 'O login pela conta Neuro ainda não está ligado no site.' }
+    Write-Host ""; Write-Host "  Confirme em: $($c.url)"; Write-Host "  Código: $($c.codigo)"; Write-Host ""
+    Start-Process $c.url | Out-Null
+    Write-Host '  Aguardando a confirmação (até 10 minutos)...'
+    $end = (Get-Date).AddMinutes(10)
+    while ((Get-Date) -lt $end -and -not $Chave) {
+      Start-Sleep -Seconds 3
+      try { $st = Invoke-RestMethod -Uri ("$Site/api/dispositivo/status?codigo=" + [uri]::EscapeDataString($c.codigo) + '&segredo=' + [uri]::EscapeDataString($c.segredo)) } catch { continue }
+      if ($st.estado -eq 'confirmado') {
+        $k = Invoke-RestMethod -Method Post -Uri "$Site/api/dispositivo/resgatar" -ContentType 'application/json' -Body (@{ codigo = $c.codigo; segredo = $c.segredo } | ConvertTo-Json)
+        $Chave = $k.key
+      } elseif ('expirado', 'invalido', 'usado' -contains $st.estado) { break }
+    }
+    if (-not $Chave) { Die 'A confirmação não chegou a tempo. Rode o instalador de novo.' }
+  }
+  @{ key = $Chave; site = $Site; maquina = $env:COMPUTERNAME; savedAt = (Get-Date).ToString('o') } | ConvertTo-Json | Set-Content -Path $AccessFile -Encoding UTF8
+  icacls $AccessFile /inheritance:r /grant:r "${env:USERNAME}:(R,W)" | Out-Null
+  $env:NEURO_HARNESS_SITE = $Site
+  Ok ("computador conectado à sua conta (chave " + $Chave.Substring(0, 6) + "…)")
+
+  if (-not $Versao) { $Versao = 'latest' }
+  Say "Baixando o Neuro Harness $Versao"
+  $tmp = Join-Path $env:TEMP ("neuro-harness-" + [guid]::NewGuid())
+  New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+  FetchPkg "$Site/api/pacotes/neuro-harness/$Versao" (Join-Path $tmp 'nh.tgz')
+  $new = "$Src.new"
+  if (Test-Path $new) { Remove-Item -Recurse -Force $new }
+  New-Item -ItemType Directory -Force -Path $new | Out-Null
+  tar -xzf (Join-Path $tmp 'nh.tgz') -C $new --strip-components=1
+  if ($LASTEXITCODE -ne 0) { Die 'pacote corrompido' }
+  if (Test-Path $Src) { Remove-Item -Recurse -Force $Src }
+  Move-Item $new $Src
+  Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+  $Versao = 'v' + (node -p "require(process.argv[1]).version" (Join-Path $Src 'package.json'))
+  Ok "código em $Src ($Versao)"
+} else {
 Say 'Login no GitHub (repositórios privados)'
 gh auth status 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
@@ -62,13 +133,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 gh auth setup-git 2>$null | Out-Null
 gh api "repos/$Repo" --jq .full_name 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) { Die "Sua conta do GitHub não tem acesso a $Repo. Peça acesso ao dono do repositório." }
+if ($LASTEXITCODE -ne 0) { Die "Sua conta do GitHub não tem acesso a $Repo. Peça acesso em $Site/acesso" }
 Ok "conectado como $(gh api user --jq .login)"
 
 # ---------------------------------------------------------------- 3. Neuro Harness
 if (-not $Versao) { $Versao = gh release view --repo $Repo --json tagName --jq .tagName }
 Say "Baixando o Neuro Harness $Versao"
-New-Item -ItemType Directory -Force -Path $NH, $Bin | Out-Null
 if (Test-Path (Join-Path $Src '.git')) {
   git -C $Src fetch -q --depth 1 origin "refs/tags/${Versao}:refs/tags/$Versao" --force
   git -C $Src -c advice.detachedHead=false checkout -q $Versao
@@ -77,6 +147,8 @@ if (Test-Path (Join-Path $Src '.git')) {
   git -c advice.detachedHead=false clone -q --depth 1 --branch $Versao "https://github.com/$Repo.git" $Src
 }
 Ok "código em $Src"
+
+}
 
 $Cli = Join-Path $Src 'lib\cli.js'
 Set-Content -Path (Join-Path $Bin 'neuro-harness.cmd') -Value "@echo off`r`nnode `"$Cli`" %*" -Encoding ASCII
@@ -87,7 +159,7 @@ if (-not ($userPath -split ';' | Where-Object { $_ -eq $Bin })) {
 $env:Path = "$Bin;$env:Path"
 Ok "comando neuro-harness em $Bin (vale nos terminais novos)"
 
-Say 'Instalando o Harness, o motor, o perfil e os plugins (a primeira vez baixa ~550 MB)'
+Say 'Instalando o Neuro Harness e os agentes (a primeira vez baixa ~550 MB)'
 node $Cli setup
 if ($LASTEXITCODE -ne 0) { Die 'o setup falhou; rode: neuro-harness doctor' }
 
@@ -103,7 +175,8 @@ if (-not $SemApp) {
   Say 'Instalando o app Neuro Harness'
   $tmp = Join-Path $env:TEMP ("neuro-harness-" + [guid]::NewGuid())
   New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-  gh release download $Versao --repo $Repo --pattern '*Setup*.exe' --dir $tmp --clobber
+  if ($Mode -eq 'conta') { FetchPkg "$Site/api/app/windows" (Join-Path $tmp 'Neuro-Harness-Setup.exe') }
+  else { gh release download $Versao --repo $Repo --pattern '*Setup*.exe' --dir $tmp --clobber }
   $exe = Get-ChildItem $tmp -Filter '*.exe' | Select-Object -First 1
   if ($exe) {
     Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
@@ -125,4 +198,5 @@ Write-Host "  neuro-harness status      estado e endereço do painel"
 Write-Host "  neuro-harness open        abre o painel no navegador"
 Write-Host "  neuro-harness doctor      confere tudo"
 Write-Host "  neuro-harness setup       atualiza depois de uma versão nova"
-Write-Host "Construído sobre o DeepSeek Harness. Abra um terminal novo para usar o comando neuro-harness." -ForegroundColor DarkGray
+Write-Host "  neuro-harness conta       mostra a conta conectada a este computador"
+Write-Host "Abra um terminal novo para usar o comando neuro-harness." -ForegroundColor DarkGray
