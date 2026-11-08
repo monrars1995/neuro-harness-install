@@ -1,9 +1,9 @@
 # Instalador do Neuro Harness para Windows 10/11 (PowerShell 5.1+).
 #
-#   irm https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.ps1 | iex
+#   irm https://harness.neuros.my/install.ps1 | iex
 #
 # Com opções:
-#   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/monrars1995/neuro-harness-install/main/install.ps1))) -SemApp
+#   & ([scriptblock]::Create((irm https://harness.neuros.my/install.ps1))) -SemApp
 #
 #   -SemApp            não instala o app desktop
 #   -Versao vX.Y.Z     instala uma versão específica (padrão: a última Release)
