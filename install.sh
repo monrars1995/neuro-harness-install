@@ -8,21 +8,27 @@
 #   --versao vX.Y.Z     instala uma versão específica (padrão: a última Release)
 #   --sem-credenciais   não importa chaves de API do Hermes e do OpenCode
 #   --sem-abrir         não sobe nem abre o Neuro Harness no fim
+#   --chave nh_…        usa a chave pessoal de instalação da sua conta Neuro
+#   --github            instala pelo GitHub (conta com acesso aos repositórios), como antes
 #
-# Este script é público e não contém segredos. Os repositórios do Neuro Harness são privados:
-# o script faz o login no GitHub (gh) e usa as suas credenciais para baixar o resto.
+# Este script é público e não contém segredos. Por padrão ele usa a sua conta Neuro: se este
+# computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
+# Quem já tem o GitHub com acesso aos repositórios continua instalando por ele.
 set -euo pipefail
 
 REPO="monrars1995/neuro-harness"
 NH_HOME="${NEURO_HARNESS_HOME:-$HOME/.neuro-harness}"
 SRC="$NH_HOME/src"
-WITH_APP=1; VERSION=""; CREDS=1; OPEN=1
+SITE="${NEURO_HARNESS_SITE:-https://harness.neuros.my}"
+WITH_APP=1; VERSION=""; CREDS=1; OPEN=1; KEY="${NEURO_HARNESS_CHAVE:-}"; FORCE_GH=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --sem-app) WITH_APP=0 ;;
     --versao) VERSION="${2:-}"; shift ;;
     --sem-credenciais) CREDS=0 ;;
     --sem-abrir) OPEN=0 ;;
+    --chave) KEY="${2:-}"; shift ;;
+    --github) FORCE_GH=1 ;;
     -h|--help) sed -n '2,16p' "$0" 2>/dev/null || true; exit 0 ;;
     *) echo "opção desconhecida: $1" >&2; exit 2 ;;
   esac
@@ -43,6 +49,14 @@ printf '\n%sneuro harness%s %s— instalador (%s %s)%s\n\n' "$B" "$X" "$D" "$OS"
 node_ok()   { has node && [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -ge 22 ]; }
 python_ok() { has python3 && python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; }
 
+# Modo: conta Neuro (chave pessoal, sem GitHub) ou GitHub (conta com acesso aos repositórios).
+ACCESS_FILE="$NH_HOME/acesso.json"
+[ -z "$KEY" ] && [ -f "$ACCESS_FILE" ] && KEY="$(sed -n 's/.*"key": *"\(nh_[^"]*\)".*/\1/p' "$ACCESS_FILE" | head -1)"
+MODE=conta
+if [ "$FORCE_GH" = 1 ]; then MODE=github
+elif [ -z "$KEY" ] && has gh && gh auth status >/dev/null 2>&1 && gh api "repos/$REPO" --jq .full_name >/dev/null 2>&1; then MODE=github
+fi
+
 # ---------------------------------------------------------------- 1. dependências
 deps_mac() {
   if ! has brew; then
@@ -56,7 +70,7 @@ deps_mac() {
   has git || pkgs+=(git)
   python_ok || pkgs+=(python)
   has ffmpeg || pkgs+=(ffmpeg)
-  has gh || pkgs+=(gh)
+  [ "$MODE" = github ] && ! has gh && pkgs+=(gh)
   if [ ${#pkgs[@]} -gt 0 ]; then say "Instalando: ${pkgs[*]}"; brew install "${pkgs[@]}"; fi
 }
 
@@ -72,7 +86,7 @@ deps_linux() {
       curl -fsSL https://deb.nodesource.com/setup_22.x | asroot bash -
       asroot apt-get install -y nodejs
     fi
-    if ! has gh; then
+    if [ "$MODE" = github ] && ! has gh; then
       say "Instalando o GitHub CLI"
       asroot mkdir -p -m 755 /etc/apt/keyrings
       curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | asroot tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
@@ -84,12 +98,13 @@ deps_linux() {
     say "Instalando dependências (dnf; o sudo pode pedir a sua senha)"
     asroot dnf install -y git python3 ffmpeg-free curl || asroot dnf install -y git python3 ffmpeg curl
     node_ok || { curl -fsSL https://rpm.nodesource.com/setup_22.x | asroot bash -; asroot dnf install -y nodejs; }
-    has gh || asroot dnf install -y gh
+    [ "$MODE" = github ] && ! has gh && asroot dnf install -y gh
   elif has pacman; then
     say "Instalando dependências (pacman; o sudo pode pedir a sua senha)"
-    asroot pacman -Sy --needed --noconfirm git python ffmpeg nodejs npm github-cli
+    asroot pacman -Sy --needed --noconfirm git python ffmpeg nodejs npm
+    [ "$MODE" = github ] && asroot pacman -S --needed --noconfirm github-cli
   else
-    die "Gerenciador de pacotes não suportado. Instale à mão: Node.js 22+, git, Python 3.10+, FFmpeg e GitHub CLI."
+    die "Gerenciador de pacotes não suportado. Instale à mão: Node.js 22+, git, Python 3.10+ e FFmpeg."
   fi
 }
 
@@ -100,18 +115,83 @@ case "$OS" in
   *) die "Sistema não suportado: $OS (no Windows, use install.ps1)" ;;
 esac
 node_ok || die "Node.js 22+ não encontrado."
-for c in git ffmpeg gh; do has "$c" || die "$c não encontrado."; done
+for c in git ffmpeg curl tar; do has "$c" || die "$c não encontrado."; done
+[ "$MODE" = github ] && { has gh || die "gh não encontrado."; }
 python_ok || die "Python 3.10+ não encontrado."
-ok "Node $(node -v) · git · Python · FFmpeg · GitHub CLI"
+ok "Node $(node -v) · git · Python · FFmpeg"
 
-# ---------------------------------------------------------------- 2. login no GitHub
+
+# ---------------------------------------------------------------- 2. acesso
+# Baixa um pacote privado pelo site com a chave (cabeçalho em arquivo: a chave não aparece na lista de processos).
+fetch_pkg() { # fetch_pkg <url> <saída>
+  local H; H="$(mktemp)"; chmod 600 "$H"
+  printf 'Authorization: Bearer %s\n' "$KEY" > "$H"
+  local code; code="$(curl -fsSL --retry 2 -H "@$H" -o "$2" -w '%{http_code}' "$1" || true)"
+  rm -f "$H"
+  [ -s "$2" ] || { case "$code" in 401) die "chave inválida ou revogada. Gere outra em $SITE/conta" ;; 403) die "o acesso desta conta não está aprovado. Acompanhe em $SITE/conta" ;; 501) die "o site ainda não está servindo os pacotes. Tente mais tarde." ;; *) die "não consegui baixar $1 (HTTP ${code:-?})" ;; esac; }
+}
+
+if [ "$MODE" = conta ]; then
+  say "Conta Neuro"
+  mkdir -p "$NH_HOME"
+  if [ -z "$KEY" ]; then
+    printf '  %sO navegador vai abrir para você entrar na sua conta Neuro e confirmar este computador.%s\n' "$D" "$X"
+    printf '  %sAinda sem acesso? Peça em %s/acesso%s\n' "$D" "$SITE" "$X"
+    LOGIN_JS="$(mktemp)"
+    cat > "$LOGIN_JS" <<'NODE'
+const fs = require('fs'), os = require('os'), { spawnSync } = require('child_process')
+const site = process.env.NH_SITE, file = process.env.NH_FILE
+const api = async (p, o = {}) => { const r = await fetch(site + p, { ...o, headers: { 'Content-Type': 'application/json' } }); let d = {}; try { d = await r.json() } catch {} ; return { ok: r.ok, status: r.status, d } }
+;(async () => {
+  const c = await api('/api/dispositivo/codigo', { method: 'POST', body: '{}' })
+  if (!c.ok) { console.error(c.status === 503 ? 'O login pela conta Neuro ainda não está ligado no site.' : 'Não consegui iniciar o login (HTTP ' + c.status + ').'); process.exit(1) }
+  const { codigo, segredo, url } = c.d
+  console.log('\n  Confirme em: ' + url + '\n  Código: ' + codigo + '\n')
+  spawnSync(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], { stdio: 'ignore' })
+  console.log('  Aguardando a confirmação (até 10 minutos)...')
+  for (const end = Date.now() + 600e3; Date.now() < end;) {
+    await new Promise((r) => setTimeout(r, 3000))
+    const s = await api('/api/dispositivo/status?codigo=' + encodeURIComponent(codigo) + '&segredo=' + encodeURIComponent(segredo)).catch(() => ({ d: {} }))
+    if (s.d.estado === 'confirmado') {
+      const k = await api('/api/dispositivo/resgatar', { method: 'POST', body: JSON.stringify({ codigo, segredo }) })
+      if (!k.ok) break
+      fs.writeFileSync(file, JSON.stringify({ key: k.d.key, site, maquina: os.hostname(), savedAt: new Date().toISOString() }, null, 2) + '\n', { mode: 0o600 })
+      process.exit(0)
+    }
+    if (['expirado', 'invalido', 'usado'].includes(s.d.estado)) break
+  }
+  console.error('A confirmação não chegou a tempo. Rode o instalador de novo.'); process.exit(1)
+})()
+NODE
+    NH_SITE="$SITE" NH_FILE="$ACCESS_FILE" node "$LOGIN_JS" || { rm -f "$LOGIN_JS"; die "login não concluído."; }
+    rm -f "$LOGIN_JS"
+    KEY="$(sed -n 's/.*"key": *"\(nh_[^"]*\)".*/\1/p' "$ACCESS_FILE" | head -1)"
+    [ -n "$KEY" ] || die "não recebi a chave da sua conta."
+  else
+    umask 077; printf '{\n  "key": "%s",\n  "site": "%s"\n}\n' "$KEY" "$SITE" > "$ACCESS_FILE"; umask 022
+  fi
+  chmod 600 "$ACCESS_FILE"
+  export NEURO_HARNESS_SITE="$SITE"
+  ok "computador conectado à sua conta (chave ${KEY:0:6}…${KEY: -4})"
+
+  # NEURO_HARNESS_REF (teste) não vale aqui: a conta instala sempre uma Release.
+  [ -n "$VERSION" ] || VERSION=latest
+  say "Baixando o Neuro Harness ${VERSION#v}"
+  TMP="$(mktemp -d)"
+  fetch_pkg "$SITE/api/pacotes/neuro-harness/$VERSION" "$TMP/nh.tgz"
+  rm -rf "$SRC.new"; mkdir -p "$SRC.new"
+  tar -xzf "$TMP/nh.tgz" -C "$SRC.new" --strip-components=1 || die "pacote corrompido"
+  rm -rf "$SRC"; mv "$SRC.new" "$SRC"; rm -rf "$TMP"
+  VERSION="v$(node -p "require('$SRC/package.json').version")"
+  ok "código em $SRC ($VERSION)"
+else
 say "Login no GitHub (repositórios privados)"
 if ! gh auth status >/dev/null 2>&1; then
   printf '  %sO navegador vai abrir para você entrar no GitHub com a conta que tem acesso ao Neuro Harness.%s\n' "$D" "$X"
   tty gh auth login --web --git-protocol https --hostname github.com
 fi
 gh auth setup-git >/dev/null 2>&1 || true
-gh api "repos/$REPO" --jq .full_name >/dev/null 2>&1 || die "Sua conta do GitHub não tem acesso a $REPO. Peça acesso ao dono do repositório."
+gh api "repos/$REPO" --jq .full_name >/dev/null 2>&1 || die "Sua conta do GitHub não tem acesso a $REPO. Peça acesso em $SITE/acesso"
 ok "conectado como $(gh api user --jq .login)"
 
 # ---------------------------------------------------------------- 3. Neuro Harness
@@ -131,6 +211,7 @@ else
   git -c advice.detachedHead=false clone -q --depth 1 --branch "$VERSION" "https://github.com/$REPO.git" "$SRC"
 fi
 ok "código em $SRC"
+fi
 
 mkdir -p "$NH_HOME/bin"
 cat > "$NH_HOME/bin/neuro-harness" <<EOF
@@ -147,7 +228,7 @@ done
 export PATH="$NH_HOME/bin:$PATH"
 ok "comando neuro-harness em $NH_HOME/bin (vale nos terminais novos)"
 
-say "Instalando o Harness, o motor, o perfil e os plugins (a primeira vez baixa ~550 MB)"
+say "Instalando o Neuro Harness e os agentes (a primeira vez baixa ~550 MB)"
 node "$SRC/lib/cli.js" setup
 
 if [ "$CREDS" = 1 ] && { [ -f "$HOME/.hermes/.env" ] || [ -f "$HOME/.local/share/opencode/auth.json" ]; }; then
@@ -160,7 +241,8 @@ if [ "$WITH_APP" = 1 ] && [ "$OS" = "Darwin" ]; then
   if [ "$ARCH" = "arm64" ]; then
     say "Instalando o app Neuro Harness"
     TMP="$(mktemp -d)"
-    gh release download "$VERSION" --repo "$REPO" --pattern '*arm64.dmg' --dir "$TMP" --clobber
+    if [ "$MODE" = conta ]; then fetch_pkg "$SITE/api/app/mac" "$TMP/app.dmg"
+    else gh release download "$VERSION" --repo "$REPO" --pattern '*arm64.dmg' --dir "$TMP" --clobber; fi
     DMG="$(ls "$TMP"/*.dmg | head -1)"
     MNT="$TMP/mnt"; mkdir -p "$MNT"
     hdiutil attach -nobrowse -quiet -mountpoint "$MNT" "$DMG"
@@ -194,5 +276,6 @@ ${G}${B}Neuro Harness instalado.${X}
   neuro-harness open        abre o painel no navegador
   neuro-harness doctor      confere tudo
   neuro-harness setup       atualiza depois de uma versão nova
-${D}Construído sobre o DeepSeek Harness. Abra um terminal novo para usar o comando neuro-harness.${X}
+  neuro-harness conta       mostra a conta conectada a este computador
+${D}Abra um terminal novo para usar o comando neuro-harness.${X}
 EOF
