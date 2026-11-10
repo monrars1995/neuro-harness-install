@@ -10,7 +10,7 @@
       "name": "neuro-harness",
       "source": "./claude-plugin",
       "description": "Instala e organiza os especialistas da Neuro (edição de vídeo com exportação em 4K, gestão de tráfego na Meta e copy), em pt-BR, pela sua conta Neuro.",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "homepage": "https://harness.neuros.my",
       "license": "MIT",
       "keywords": ["neuro-harness", "video-editing", "meta-ads", "pt-br"]
