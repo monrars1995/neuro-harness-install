@@ -1,0 +1,33 @@
+{
+  "name": "@neuros/harness",
+  "version": "0.5.1",
+  "description": "Instalador do Neuro Harness: especialistas de IA em pt-BR para edição de vídeo (exportação em 4K), gestão de tráfego na Meta e copy, no app, no painel e no Claude Code. Os especialistas são liberados pela sua conta Neuro.",
+  "license": "MIT",
+  "author": "Ramon Ribeiro (https://harness.neuros.my)",
+  "homepage": "https://harness.neuros.my",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/monrars1995/neuro-harness-install.git"
+  },
+  "bugs": "https://github.com/monrars1995/neuro-harness-install/issues",
+  "keywords": ["neuro-harness", "claude-code", "claude-code-plugin", "video-editing", "4k", "meta-ads", "pt-br"],
+  "bin": {
+    "neuro-harness": "bin/neuro-harness.js"
+  },
+  "files": [
+    "bin",
+    "install.sh",
+    "install.ps1",
+    "claude-plugin",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

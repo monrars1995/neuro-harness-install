@@ -1,0 +1,24 @@
+# Publica @neuros/harness no npm a cada tag vX.Y.Z (precisa do segredo NPM_TOKEN, um token de automação do npm).
+name: npm
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Versão da tag = versão do pacote
+        run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}" || test "${GITHUB_EVENT_NAME}" = workflow_dispatch
+      - run: bash -n install.sh && node --check bin/neuro-harness.js
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

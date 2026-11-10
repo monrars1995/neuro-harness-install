@@ -1,0 +1,11 @@
+{
+  "name": "neuro-harness",
+  "description": "Neuro Harness no Claude Code: instala e organiza os especialistas da Neuro (edição de vídeo com exportação em 4K, gestão de tráfego na Meta e copy com compliance), em pt-BR. Os especialistas são liberados pela sua conta Neuro, com aprovação.",
+  "version": "0.5.1",
+  "author": { "name": "Ramon Ribeiro", "url": "https://harness.neuros.my" },
+  "homepage": "https://harness.neuros.my",
+  "repository": "https://github.com/monrars1995/neuro-harness-install",
+  "license": "MIT",
+  "keywords": ["neuro-harness", "video-editing", "4k", "paid-media", "meta-ads", "copywriting", "pt-br"],
+  "icon": ".claude-plugin/icon.png"
+}
