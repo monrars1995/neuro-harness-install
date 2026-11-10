@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 'use strict'
 /**
- * @neuros/harness — o instalador público do Neuro Harness pelo npm.
+ * @oneuros/harness — o instalador público do Neuro Harness pelo npm.
  *
- *   npx @neuros/harness                     instala o Neuro Harness (o mesmo que o comando de uma linha)
- *   npx @neuros/harness claude              só os especialistas no Claude Code (sem app e sem painel)
- *   npx @neuros/harness <comando>           com o Neuro Harness instalado, repassa ao CLI dele
+ *   npx @oneuros/harness                     instala o Neuro Harness (o mesmo que o comando de uma linha)
+ *   npx @oneuros/harness claude              só os especialistas no Claude Code (sem app e sem painel)
+ *   npx @oneuros/harness <comando>           com o Neuro Harness instalado, repassa ao CLI dele
  *                                           (status, doctor, claude status, entrar, conta...)
  *
  * Este pacote não traz os especialistas: eles são baixados pela sua conta Neuro, depois da aprovação.
@@ -32,9 +32,9 @@ const PS_FLAGS = {
 function help() {
   console.log(`Neuro Harness ${PKG.version} · instalador (npm)
 
-  npx @neuros/harness [opções]          instala ou atualiza o Neuro Harness
-  npx @neuros/harness claude            só os especialistas no Claude Code
-  npx @neuros/harness <comando>         repassa ao CLI instalado (status, doctor, claude status, conta...)
+  npx @oneuros/harness [opções]          instala ou atualiza o Neuro Harness
+  npx @oneuros/harness claude            só os especialistas no Claude Code
+  npx @oneuros/harness <comando>         repassa ao CLI instalado (status, doctor, claude status, conta...)
 
 Opções do instalador:
   --claude-code          também instala os especialistas no Claude Code
@@ -66,7 +66,7 @@ function runInstaller(args) {
 
 function delegate(args) {
   if (!fs.existsSync(CLI)) {
-    console.error(`O Neuro Harness não está instalado neste computador (${HOME}).\nInstale com: npx @neuros/harness   (ou só para o Claude Code: npx @neuros/harness claude)`)
+    console.error(`O Neuro Harness não está instalado neste computador (${HOME}).\nInstale com: npx @oneuros/harness   (ou só para o Claude Code: npx @oneuros/harness claude)`)
     return 1
   }
   const r = spawnSync(process.execPath, [CLI, ...args], { stdio: 'inherit' })

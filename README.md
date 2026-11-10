@@ -2,7 +2,7 @@
 
 Instalador público do [Neuro Harness](https://harness.neuros.my): especialistas de IA em português para **edição de vídeo** (exportação em 4K, 1440p ou 1080p sem perder qualidade), **gestão de tráfego** na Meta e **copy** com as regras de cada segmento. Funcionam no app, no painel do navegador e no **Claude Code**.
 
-Este repositório tem só o que pode ser público: os scripts de instalação, o pacote npm `@neuros/harness` e o plugin central do Claude Code. Os especialistas são liberados pela sua conta Neuro, depois da aprovação ([pedir acesso](https://harness.neuros.my/acesso)). Nada aqui contém segredos.
+Este repositório tem só o que pode ser público: os scripts de instalação, o pacote npm `@oneuros/harness` e o plugin central do Claude Code. Os especialistas são liberados pela sua conta Neuro, depois da aprovação ([pedir acesso](https://harness.neuros.my/acesso)). Nada aqui contém segredos.
 
 ## Instalar
 
@@ -10,13 +10,13 @@ Este repositório tem só o que pode ser público: os scripts de instalação, o
 |---|---|
 | macOS e Linux | `curl -fsSL https://harness.neuros.my/install.sh \| bash` |
 | Windows 10/11 (PowerShell) | `irm https://harness.neuros.my/install.ps1 \| iex` |
-| npm (qualquer sistema com Node 18+) | `npx @neuros/harness` |
+| npm (qualquer sistema com Node 18+) | `npx @oneuros/harness` |
 
 ### Só no Claude Code
 
 | Onde | Comando |
 |---|---|
-| npm | `npx @neuros/harness claude` |
+| npm | `npx @oneuros/harness claude` |
 | macOS e Linux | `curl -fsSL https://harness.neuros.my/install.sh \| bash -s -- --apenas-claude-code` |
 | Windows | `& ([scriptblock]::Create((irm https://harness.neuros.my/install.ps1))) -ApenasClaudeCode` |
 | Dentro do Claude Code | `/plugin marketplace add monrars1995/neuro-harness-install`, depois `/plugin install neuro-harness@neuros` e `/neuro-harness:instalar` |
@@ -49,18 +49,18 @@ O endereço `harness.neuros.my` serve os scripts deste repositório. Se ele esti
 | `--chave nh_…` | `-Chave nh_…` | Usa a chave de instalação da sua conta Neuro |
 | `--github` | `-GitHub` | Instala pelo GitHub, para contas com acesso aos repositórios |
 
-No `curl … | bash`, passe as opções depois de `bash -s --`. No npm: `npx @neuros/harness --sem-app`.
+No `curl … | bash`, passe as opções depois de `bash -s --`. No npm: `npx @oneuros/harness --sem-app`.
 
 ## Com o Neuro Harness instalado
 
-`npx @neuros/harness <comando>` repassa ao CLI instalado: `status`, `doctor`, `claude status`, `conta`, `entrar` e os demais. Referência completa em [h-docs.neuros.my](https://h-docs.neuros.my/referencia/cli).
+`npx @oneuros/harness <comando>` repassa ao CLI instalado: `status`, `doctor`, `claude status`, `conta`, `entrar` e os demais. Referência completa em [h-docs.neuros.my](https://h-docs.neuros.my/referencia/cli).
 
 ## Conteúdo deste repositório
 
 | Caminho | O que é |
 |---|---|
 | `install.sh`, `install.ps1` | Os instaladores |
-| `bin/neuro-harness.js` | O comando do pacote npm `@neuros/harness` |
+| `bin/neuro-harness.js` | O comando do pacote npm `@oneuros/harness` |
 | `claude-plugin/` | Plugin central do Claude Code: `/neuro-harness:instalar`, `comecar`, `verificar`, `atualizar` e a skill `muse-code` |
 | `.claude-plugin/marketplace.json` | Marketplace público `neuros`, com o plugin central |
 | `.github/workflows/npm.yml` | Publica no npm a cada tag `vX.Y.Z` (segredo `NPM_TOKEN`) |
