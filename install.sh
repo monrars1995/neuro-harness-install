@@ -10,6 +10,9 @@
 #   --sem-abrir         não sobe nem abre o Neuro Harness no fim
 #   --chave nh_…        usa a chave pessoal de instalação da sua conta Neuro
 #   --github            instala pelo GitHub (conta com acesso aos repositórios), como antes
+#   --claude-code       instala também os especialistas no Claude Code (plugins neuro-harness,
+#                       neuro-mv-edit e neuro-ads-manager, marketplace local, sem GitHub)
+#   --apenas-claude-code  só os plugins do Claude Code: sem o app, sem o painel e sem o runtime do Harness
 #
 # Este script é público e não contém segredos. Por padrão ele usa a sua conta Neuro: se este
 # computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
@@ -20,7 +23,7 @@ REPO="monrars1995/neuro-harness"
 NH_HOME="${NEURO_HARNESS_HOME:-$HOME/.neuro-harness}"
 SRC="$NH_HOME/src"
 SITE="${NEURO_HARNESS_SITE:-https://harness.neuros.my}"
-WITH_APP=1; VERSION=""; CREDS=1; OPEN=1; KEY="${NEURO_HARNESS_CHAVE:-}"; FORCE_GH=0
+WITH_APP=1; VERSION=""; CREDS=1; OPEN=1; KEY="${NEURO_HARNESS_CHAVE:-}"; FORCE_GH=0; CLAUDE=0; ONLY_CLAUDE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --sem-app) WITH_APP=0 ;;
@@ -29,7 +32,9 @@ while [ $# -gt 0 ]; do
     --sem-abrir) OPEN=0 ;;
     --chave) KEY="${2:-}"; shift ;;
     --github) FORCE_GH=1 ;;
-    -h|--help) sed -n '2,16p' "$0" 2>/dev/null || true; exit 0 ;;
+    --claude-code) CLAUDE=1 ;;
+    --apenas-claude-code|--so-claude-code) CLAUDE=1; ONLY_CLAUDE=1; WITH_APP=0; CREDS=0; OPEN=0 ;;
+    -h|--help) sed -n '2,19p' "$0" 2>/dev/null || true; exit 0 ;;
     *) echo "opção desconhecida: $1" >&2; exit 2 ;;
   esac
   shift
@@ -228,8 +233,17 @@ done
 export PATH="$NH_HOME/bin:$PATH"
 ok "comando neuro-harness em $NH_HOME/bin (vale nos terminais novos)"
 
-say "Instalando o Neuro Harness e os agentes (a primeira vez baixa ~550 MB)"
-node "$SRC/lib/cli.js" setup
+if [ "$ONLY_CLAUDE" = 1 ]; then
+  command -v claude >/dev/null 2>&1 || die "o Claude Code não está instalado (comando claude): https://claude.com/claude-code"
+else
+  say "Instalando o Neuro Harness e os agentes (a primeira vez baixa ~550 MB)"
+  node "$SRC/lib/cli.js" setup
+fi
+
+if [ "$CLAUDE" = 1 ]; then
+  say "Instalando os especialistas no Claude Code"
+  node "$SRC/lib/cli.js" claude instalar || warn "os plugins do Claude Code não foram instalados (rode: neuro-harness claude instalar)"
+fi
 
 if [ "$CREDS" = 1 ] && { [ -f "$HOME/.hermes/.env" ] || [ -f "$HOME/.local/share/opencode/auth.json" ]; }; then
   say "Importando chaves de API do Hermes e do OpenCode"
@@ -269,6 +283,22 @@ if [ "$OPEN" = 1 ]; then
   fi
 fi
 
+if [ "$ONLY_CLAUDE" = 1 ]; then
+  cat <<EOF
+
+${G}${B}Especialistas do Neuro Harness instalados no Claude Code.${X}
+  Abra uma sessão nova do Claude Code e comece com /neuro-harness:comecar
+  neuro-harness claude status     versões dos plugins
+  neuro-harness claude instalar   atualiza depois de uma versão nova
+${D}Abra um terminal novo para usar o comando neuro-harness.${X}
+EOF
+  exit 0
+fi
+CC_HINT=""
+if [ "$CLAUDE" = 0 ] && command -v claude >/dev/null 2>&1; then
+  CC_HINT="  neuro-harness claude instalar   leva os especialistas para o Claude Code (o Claude Code está neste computador)"
+fi
+
 cat <<EOF
 
 ${G}${B}Neuro Harness instalado.${X}
@@ -277,5 +307,6 @@ ${G}${B}Neuro Harness instalado.${X}
   neuro-harness doctor      confere tudo
   neuro-harness setup       atualiza depois de uma versão nova
   neuro-harness conta       mostra a conta conectada a este computador
+${CC_HINT}
 ${D}Abra um terminal novo para usar o comando neuro-harness.${X}
 EOF

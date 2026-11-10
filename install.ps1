@@ -11,10 +11,15 @@
 #   -SemAbrir          não sobe nem abre o Neuro Harness no fim
 #   -Chave nh_…        usa a chave pessoal de instalação da sua conta Neuro
 #   -GitHub            instala pelo GitHub (conta com acesso aos repositórios), como antes
+#   -ClaudeCode        instala também os especialistas no Claude Code (plugins neuro-harness,
+#                      neuro-mv-edit e neuro-ads-manager, marketplace local, sem GitHub)
+#   -ApenasClaudeCode  só os plugins do Claude Code: sem o app, sem o painel e sem o runtime do Harness
 #
 # Este script é público e não contém segredos. Por padrão ele usa a sua conta Neuro: se este
 # computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
-param([switch]$SemApp, [string]$Versao = "", [switch]$SemCredenciais, [switch]$SemAbrir, [string]$Chave = "", [switch]$GitHub)
+param([switch]$SemApp, [string]$Versao = "", [switch]$SemCredenciais, [switch]$SemAbrir, [string]$Chave = "", [switch]$GitHub,
+      [switch]$ClaudeCode, [switch]$ApenasClaudeCode)
+if ($ApenasClaudeCode) { $ClaudeCode = $true; $SemApp = $true; $SemCredenciais = $true; $SemAbrir = $true }
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -159,9 +164,19 @@ if (-not ($userPath -split ';' | Where-Object { $_ -eq $Bin })) {
 $env:Path = "$Bin;$env:Path"
 Ok "comando neuro-harness em $Bin (vale nos terminais novos)"
 
-Say 'Instalando o Neuro Harness e os agentes (a primeira vez baixa ~550 MB)'
-node $Cli setup
-if ($LASTEXITCODE -ne 0) { Die 'o setup falhou; rode: neuro-harness doctor' }
+if ($ApenasClaudeCode) {
+  if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Die 'o Claude Code não está instalado (comando claude): https://claude.com/claude-code' }
+} else {
+  Say 'Instalando o Neuro Harness e os agentes (a primeira vez baixa ~550 MB)'
+  node $Cli setup
+  if ($LASTEXITCODE -ne 0) { Die 'o setup falhou; rode: neuro-harness doctor' }
+}
+
+if ($ClaudeCode) {
+  Say 'Instalando os especialistas no Claude Code'
+  node $Cli claude instalar
+  if ($LASTEXITCODE -ne 0) { Warn 'os plugins do Claude Code não foram instalados (rode: neuro-harness claude instalar)' }
+}
 
 $hermes = Join-Path $env:USERPROFILE '.hermes\.env'
 $opencode = Join-Path $env:USERPROFILE '.local\share\opencode\auth.json'
@@ -192,6 +207,14 @@ if (-not $SemAbrir) {
   node $Cli open | Out-Null
 }
 
+if ($ApenasClaudeCode) {
+  Write-Host ""
+  Write-Host "Especialistas do Neuro Harness instalados no Claude Code." -ForegroundColor Green
+  Write-Host "  Abra uma sessão nova do Claude Code e comece com /neuro-harness:comecar"
+  Write-Host "  neuro-harness claude status     versões dos plugins"
+  Write-Host "  neuro-harness claude instalar   atualiza depois de uma versão nova"
+  Write-Host "Abra um terminal novo para usar o comando neuro-harness." -ForegroundColor DarkGray
+} else {
 Write-Host ""
 Write-Host "Neuro Harness instalado." -ForegroundColor Green
 Write-Host "  neuro-harness status      estado e endereço do painel"
@@ -199,4 +222,8 @@ Write-Host "  neuro-harness open        abre o painel no navegador"
 Write-Host "  neuro-harness doctor      confere tudo"
 Write-Host "  neuro-harness setup       atualiza depois de uma versão nova"
 Write-Host "  neuro-harness conta       mostra a conta conectada a este computador"
+if (-not $ClaudeCode -and (Get-Command claude -ErrorAction SilentlyContinue)) {
+  Write-Host "  neuro-harness claude instalar   leva os especialistas para o Claude Code (o Claude Code está neste computador)"
+}
 Write-Host "Abra um terminal novo para usar o comando neuro-harness." -ForegroundColor DarkGray
+}
