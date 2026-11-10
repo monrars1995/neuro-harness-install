@@ -1,4 +1,4 @@
-# Publica @neuros/harness no npm a cada tag vX.Y.Z (precisa do segredo NPM_TOKEN, um token de automação do npm).
+# Publica @oneuros/harness no npm a cada tag vX.Y.Z (precisa do segredo NPM_TOKEN, um token de automação do npm).
 name: npm
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
           V=$(node -p "require('./package.json').version")
           test "$(node -p "require('./claude-plugin/.claude-plugin/plugin.json').version")" = "$V"
           test "$(node -p "require('./.claude-plugin/marketplace.json').plugins[0].version")" = "$V"
-          ! grep -rhoE "@neuros/harness(@[0-9.]+)?" claude-plugin/commands | grep -v "@neuros/harness@$V"
+          ! grep -rhoE "@oneuros/harness(@[0-9.]+)?" claude-plugin/commands | grep -v "@oneuros/harness@$V"
       - run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

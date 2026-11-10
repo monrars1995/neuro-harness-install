@@ -17,7 +17,7 @@ Também traz a skill `muse-code`, que entrega uma tarefa ao CLI oficial do Muse 
 
 ## Como funciona
 
-O `/neuro-harness:instalar` roda o instalador público `@neuros/harness` (npm), que abre o navegador para você confirmar este computador na sua conta, baixa os especialistas e os registra no Claude Code como plugins de um marketplace local. Nenhuma chave é pedida no chat.
+O `/neuro-harness:instalar` roda o instalador público `@oneuros/harness` (npm), que abre o navegador para você confirmar este computador na sua conta, baixa os especialistas e os registra no Claude Code como plugins de um marketplace local. Nenhuma chave é pedida no chat.
 
 Requisitos: Node.js 18 ou mais novo. O instalador cuida do FFmpeg, do Python e do git quando faltarem.
 
