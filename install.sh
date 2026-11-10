@@ -9,7 +9,7 @@
 #   --sem-credenciais   não importa chaves de API do Hermes e do OpenCode
 #   --sem-abrir         não sobe nem abre o Neuro Harness no fim
 #   --chave nh_…        usa a chave pessoal de instalação da sua conta Neuro
-#   --github            instala pelo GitHub (conta com acesso aos repositórios), como antes
+#   --github            desenvolvimento: clona os repositórios públicos, sem a conta Neuro
 #   --claude-code       instala também os especialistas no Claude Code (plugins neuro-harness,
 #                       neuro-mv-edit e neuro-ads-manager, marketplace local, sem GitHub)
 #   --apenas-claude-code  só os plugins do Claude Code: sem o app, sem o painel e sem o runtime do Harness
@@ -19,7 +19,7 @@
 # Quem já tem o GitHub com acesso aos repositórios continua instalando por ele.
 set -euo pipefail
 
-REPO="monrars1995/neuro-harness"
+REPO="monrars1995/oneuros-harness"
 NH_HOME="${NEURO_HARNESS_HOME:-$HOME/.neuro-harness}"
 SRC="$NH_HOME/src"
 SITE="${NEURO_HARNESS_SITE:-https://harness.neuros.my}"
@@ -54,13 +54,12 @@ printf '\n%sneuro harness%s %s— instalador (%s %s)%s\n\n' "$B" "$X" "$D" "$OS"
 node_ok()   { has node && [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -ge 22 ]; }
 python_ok() { has python3 && python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; }
 
-# Modo: conta Neuro (chave pessoal, sem GitHub) ou GitHub (conta com acesso aos repositórios).
+# Modo: conta Neuro (chave pessoal; o padrão) ou GitHub (só desenvolvimento).
 ACCESS_FILE="$NH_HOME/acesso.json"
 [ -z "$KEY" ] && [ -f "$ACCESS_FILE" ] && KEY="$(sed -n 's/.*"key": *"\(nh_[^"]*\)".*/\1/p' "$ACCESS_FILE" | head -1)"
 MODE=conta
-if [ "$FORCE_GH" = 1 ]; then MODE=github
-elif [ -z "$KEY" ] && has gh && gh auth status >/dev/null 2>&1 && gh api "repos/$REPO" --jq .full_name >/dev/null 2>&1; then MODE=github
-fi
+# O código é público, mas os agentes só se instalam com a conta Neuro aprovada. --github é para desenvolvimento.
+if [ "$FORCE_GH" = 1 ]; then MODE=github; export NEURO_HARNESS_DEV=1; fi
 
 # ---------------------------------------------------------------- 1. dependências
 deps_mac() {
@@ -190,13 +189,12 @@ NODE
   VERSION="v$(node -p "require('$SRC/package.json').version")"
   ok "código em $SRC ($VERSION)"
 else
-say "Login no GitHub (repositórios privados)"
+say "Login no GitHub (modo desenvolvimento)"
 if ! gh auth status >/dev/null 2>&1; then
-  printf '  %sO navegador vai abrir para você entrar no GitHub com a conta que tem acesso ao Neuro Harness.%s\n' "$D" "$X"
+  printf '  %sO navegador vai abrir para você entrar no GitHub (modo desenvolvimento).%s\n' "$D" "$X"
   tty gh auth login --web --git-protocol https --hostname github.com
 fi
 gh auth setup-git >/dev/null 2>&1 || true
-gh api "repos/$REPO" --jq .full_name >/dev/null 2>&1 || die "Sua conta do GitHub não tem acesso a $REPO. Peça acesso em $SITE/acesso"
 ok "conectado como $(gh api user --jq .login)"
 
 # ---------------------------------------------------------------- 3. Neuro Harness

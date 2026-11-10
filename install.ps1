@@ -10,7 +10,7 @@
 #   -SemCredenciais    não importa chaves de API do Hermes e do OpenCode
 #   -SemAbrir          não sobe nem abre o Neuro Harness no fim
 #   -Chave nh_…        usa a chave pessoal de instalação da sua conta Neuro
-#   -GitHub            instala pelo GitHub (conta com acesso aos repositórios), como antes
+#   -GitHub            desenvolvimento: clona os repositórios públicos, sem a conta Neuro
 #   -ClaudeCode        instala também os especialistas no Claude Code (plugins neuro-harness,
 #                      neuro-mv-edit e neuro-ads-manager, marketplace local, sem GitHub)
 #   -ApenasClaudeCode  só os plugins do Claude Code: sem o app, sem o painel e sem o runtime do Harness
@@ -23,7 +23,7 @@ if ($ApenasClaudeCode) { $ClaudeCode = $true; $SemApp = $true; $SemCredenciais =
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$Repo = 'monrars1995/neuro-harness'
+$Repo = 'monrars1995/oneuros-harness'
 $NH = if ($env:NEURO_HARNESS_HOME) { $env:NEURO_HARNESS_HOME } else { Join-Path $env:USERPROFILE '.neuro-harness' }
 $Src = Join-Path $NH 'src'
 $Bin = Join-Path $NH 'bin'
@@ -45,13 +45,10 @@ Write-Host ""
 Write-Host "neuro harness — instalador (Windows)" -ForegroundColor White
 Write-Host ""
 
-# Modo: conta Neuro (chave pessoal, sem GitHub) ou GitHub (conta com acesso aos repositórios).
+# Modo: conta Neuro (chave pessoal; o padrão) ou GitHub (só desenvolvimento).
+# O código é público, mas os agentes só se instalam com a conta Neuro aprovada. -GitHub é para desenvolvimento.
 $Mode = 'conta'
-if ($GitHub) { $Mode = 'github' }
-elseif (-not $Chave -and (Has gh)) {
-  gh auth status 2>$null | Out-Null
-  if ($LASTEXITCODE -eq 0) { gh api "repos/$Repo" --jq .full_name 2>$null | Out-Null; if ($LASTEXITCODE -eq 0) { $Mode = 'github' } }
-}
+if ($GitHub) { $Mode = 'github'; $env:NEURO_HARNESS_DEV = '1' }
 
 function FetchPkg($url, $out) {
   try { Invoke-WebRequest -Uri $url -Headers @{ Authorization = "Bearer $Chave" } -OutFile $out -UseBasicParsing }
@@ -130,10 +127,10 @@ if ($Mode -eq 'conta') {
   $Versao = 'v' + (node -p "require(process.argv[1]).version" (Join-Path $Src 'package.json'))
   Ok "código em $Src ($Versao)"
 } else {
-Say 'Login no GitHub (repositórios privados)'
+Say 'Login no GitHub (modo desenvolvimento)'
 gh auth status 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
-  Write-Host '  O navegador vai abrir para você entrar no GitHub com a conta que tem acesso ao Neuro Harness.' -ForegroundColor DarkGray
+  Write-Host '  O navegador vai abrir para você entrar no GitHub (modo desenvolvimento).' -ForegroundColor DarkGray
   gh auth login --web --git-protocol https --hostname github.com
 }
 gh auth setup-git 2>$null | Out-Null

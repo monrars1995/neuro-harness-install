@@ -2,7 +2,7 @@
 
 Instalador público do [Neuro Harness](https://harness.neuros.my): especialistas de IA em português para **edição de vídeo** (exportação em 4K, 1440p ou 1080p sem perder qualidade), **gestão de tráfego** na Meta e **copy** com as regras de cada segmento. Funcionam no app, no painel do navegador e no **Claude Code**.
 
-Este repositório tem só o que pode ser público: os scripts de instalação, o pacote npm `@oneuros/harness` e o plugin central do Claude Code. Os especialistas são liberados pela sua conta Neuro, depois da aprovação ([pedir acesso](https://harness.neuros.my/acesso)). Nada aqui contém segredos.
+Este repositório tem os scripts de instalação, o pacote npm `@oneuros/harness` e o plugin central do Claude Code. O código do Harness e dos especialistas também é aberto ([oneuros-harness](https://github.com/monrars1995/oneuros-harness), [oneuros-mv-edit](https://github.com/monrars1995/oneuros-mv-edit), [oneuros-ads-manager](https://github.com/monrars1995/oneuros-ads-manager)); a instalação dos agentes passa pela sua conta Neuro, depois da aprovação ([pedir acesso](https://harness.neuros.my/acesso)). Nada aqui contém segredos.
 
 ## Instalar
 
@@ -47,7 +47,7 @@ O endereço `harness.neuros.my` serve os scripts deste repositório. Se ele esti
 | `--sem-abrir` | `-SemAbrir` | Não abre o painel no fim |
 | `--versao vX.Y.Z` | `-Versao vX.Y.Z` | Uma versão específica |
 | `--chave nh_…` | `-Chave nh_…` | Usa a chave de instalação da sua conta Neuro |
-| `--github` | `-GitHub` | Instala pelo GitHub, para contas com acesso aos repositórios |
+| `--github` | `-GitHub` | Desenvolvimento: clona os repositórios públicos, sem a conta Neuro |
 
 No `curl … | bash`, passe as opções depois de `bash -s --`. No npm: `npx @oneuros/harness --sem-app`.
 
