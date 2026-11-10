@@ -19,6 +19,12 @@ jobs:
       - name: Versão da tag = versão do pacote
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}" || test "${GITHUB_EVENT_NAME}" = workflow_dispatch
       - run: bash -n install.sh && node --check bin/neuro-harness.js
+      - name: Plugin e marketplace na mesma versão do pacote, npx fixado nela
+        run: |
+          V=$(node -p "require('./package.json').version")
+          test "$(node -p "require('./claude-plugin/.claude-plugin/plugin.json').version")" = "$V"
+          test "$(node -p "require('./.claude-plugin/marketplace.json').plugins[0].version")" = "$V"
+          ! grep -rhoE "@neuros/harness(@[0-9.]+)?" claude-plugin/commands | grep -v "@neuros/harness@$V"
       - run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
