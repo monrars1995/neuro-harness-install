@@ -10,6 +10,6 @@ Você é a porta de entrada do Neuro Harness no Claude Code. Pedido: `$ARGUMENTS
    - **Gestão de tráfego** (`neuro-ads-manager`): `/neuro-ads-manager:auditar`, `/neuro-ads-manager:planejar`, `/neuro-ads-manager:relatorio`, `/neuro-ads-manager:conversao`.
    - **Copy e criativos** (`neuro-ads-manager`): `/neuro-ads-manager:criativos`, com a revisão de compliance do segmento.
    - **Muse Code (Meta):** a skill `muse-code` delega uma tarefa ao CLI `muse` pela assinatura do usuário.
-   Se nenhum especialista estiver instalado, ofereça `/neuro-harness:instalar` (pela conta Neuro, com aprovação). Se faltar só um, `npx -y @oneuros/harness@0.5.1 claude` instala ou atualiza todos.
+   Se nenhum especialista estiver instalado, ofereça `/neuro-harness:instalar` (pela conta Neuro, com aprovação). Se faltar só um, `npx -y @oneuros/harness@0.6.0 claude` instala ou atualiza todos.
 2. **Ambiente.** Rode `/neuro-harness:verificar` antes da primeira tarefa pesada da sessão (edição de vídeo, por exemplo).
 3. **Encaminhe.** Com o pedido nos argumentos, diga qual especialista resolve e siga o comando dele (as decisões de cada um, como resolução e codec do vídeo, são perguntadas lá). Sem pedido, pergunte o que a pessoa quer fazer, com múltipla escolha entre os especialistas instalados.
