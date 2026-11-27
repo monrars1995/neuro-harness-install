@@ -26,7 +26,7 @@ const CLI = path.join(HOME, 'src', 'lib', 'cli.js')
 const PS_FLAGS = {
   '--sem-app': '-SemApp', '--sem-credenciais': '-SemCredenciais', '--sem-abrir': '-SemAbrir', '--github': '-GitHub',
   '--claude-code': '-ClaudeCode', '--apenas-claude-code': '-ApenasClaudeCode', '--so-claude-code': '-ApenasClaudeCode',
-  '--versao': '-Versao', '--chave': '-Chave',
+  '--versao': '-Versao', '--chave': '-Chave', '--biblioteca': '-Biblioteca', '--preparar-video': '-PrepararVideo',
 }
 
 function help() {
@@ -44,6 +44,8 @@ Opções do instalador:
   --sem-abrir            não abre o painel no fim
   --versao vX.Y.Z        uma versão específica
   --chave nh_…           usa a chave de instalação da sua conta Neuro
+  --biblioteca <arquivo> importa perfis, temas e áudios exportados de outro computador
+  --preparar-video       já deixa a edição de vídeo pronta (motor, navegador do render, fontes)
 
 Site: https://harness.neuros.my · Documentação: https://h-docs.neuros.my`)
 }
@@ -55,7 +57,7 @@ function runInstaller(args) {
       const f = PS_FLAGS[args[i]]
       if (!f) { console.error(`opção desconhecida: ${args[i]}`); return 2 }
       ps.push(f)
-      if (f === '-Versao' || f === '-Chave') ps.push(args[++i] || '')
+      if (f === '-Versao' || f === '-Chave' || f === '-Biblioteca') ps.push(args[++i] || '')
     }
     const r = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'install.ps1'), ...ps], { stdio: 'inherit' })
     return r.status === null ? 1 : r.status
@@ -82,7 +84,8 @@ function main(argv) {
   }
   if ((cmd === 'claude' || cmd === 'claude-code') && (!rest.length || rest[0] === 'instalar' || rest[0] === 'install' || rest[0].startsWith('--'))) {
     // instala ou atualiza o CLI e os especialistas no Claude Code (o instalador sabe pular o que já está em dia)
-    const extra = rest.filter((a) => a.startsWith('--'))
+    const extra = []
+    for (let i = 0; i < rest.length; i++) { if (rest[i].startsWith('--')) { extra.push(rest[i]); if (rest[i] === '--biblioteca' || rest[i] === '--versao' || rest[i] === '--chave') extra.push(rest[++i]) } }
     return runInstaller(['--apenas-claude-code', ...extra])
   }
   return delegate(argv)
