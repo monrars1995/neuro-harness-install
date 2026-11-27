@@ -21,7 +21,14 @@
 # computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
 param([switch]$SemApp, [string]$Versao = "", [switch]$SemCredenciais, [switch]$SemAbrir, [string]$Chave = "", [switch]$GitHub,
       [switch]$ClaudeCode, [switch]$ApenasClaudeCode, [string]$Biblioteca = "", [switch]$PrepararVideo)
-if ($Biblioteca) { if (-not (Test-Path $Biblioteca)) { Write-Host "arquivo da biblioteca não encontrado: $Biblioteca" -ForegroundColor Red; exit 2 }; $Biblioteca = (Resolve-Path $Biblioteca).Path }
+if ($Biblioteca -and -not (Test-Path $Biblioteca)) {
+  # sem caminho, procura também nas pastas de costume (Downloads, Área de Trabalho, exportações do Neuro)
+  $nome = Split-Path $Biblioteca -Leaf
+  foreach ($d in @((Join-Path $env:USERPROFILE 'Downloads'), (Join-Path $env:USERPROFILE 'Desktop'), (Join-Path $env:USERPROFILE 'Neuro\exportacoes'), (Join-Path $env:USERPROFILE 'Documents'))) {
+    if (Test-Path (Join-Path $d $nome)) { $Biblioteca = Join-Path $d $nome; break }
+  }
+}
+if ($Biblioteca) { if (-not (Test-Path $Biblioteca)) { Write-Host "arquivo da biblioteca não encontrado: $Biblioteca (procurei também em Downloads, Área de Trabalho, Documentos e Neuro\exportacoes)" -ForegroundColor Red; exit 2 }; $Biblioteca = (Resolve-Path $Biblioteca).Path }
 if ($ApenasClaudeCode) { $ClaudeCode = $true; $SemApp = $true; $SemCredenciais = $true; $SemAbrir = $true }
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
