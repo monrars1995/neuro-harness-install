@@ -47,7 +47,13 @@ done
 
 # caminho da biblioteca fixado antes de qualquer cd
 if [ -n "$BIB" ]; then
-  [ -f "$BIB" ] || { echo "arquivo da biblioteca não encontrado: $BIB" >&2; exit 2; }
+  # sem caminho, procura também nas pastas de costume (Downloads, Mesa, exportações do Neuro)
+  if [ ! -f "$BIB" ]; then
+    for d in "$HOME/Downloads" "$HOME/Desktop" "$HOME/Neuro/exportacoes" "$HOME/Documents"; do
+      [ -f "$d/$(basename "$BIB")" ] && { BIB="$d/$(basename "$BIB")"; break; }
+    done
+  fi
+  [ -f "$BIB" ] || { echo "arquivo da biblioteca não encontrado: $BIB (procurei também em Downloads, Mesa, Documentos e ~/Neuro/exportacoes)" >&2; exit 2; }
   BIB="$(cd "$(dirname "$BIB")" && pwd)/$(basename "$BIB")"
 fi
 
