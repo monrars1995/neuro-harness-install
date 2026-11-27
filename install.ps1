@@ -14,11 +14,14 @@
 #   -ClaudeCode        instala também os especialistas no Claude Code (plugins neuro-harness,
 #                      neuro-mv-edit e neuro-ads-manager, marketplace local, sem GitHub)
 #   -ApenasClaudeCode  só os plugins do Claude Code: sem o app, sem o painel e sem o runtime do Harness
+#   -Biblioteca <arq>  importa perfis, temas, estilos e áudios exportados de outro computador
+#   -PrepararVideo     já deixa a edição de vídeo pronta (motor Remotion, navegador do render, fontes)
 #
 # Este script é público e não contém segredos. Por padrão ele usa a sua conta Neuro: se este
 # computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
 param([switch]$SemApp, [string]$Versao = "", [switch]$SemCredenciais, [switch]$SemAbrir, [string]$Chave = "", [switch]$GitHub,
-      [switch]$ClaudeCode, [switch]$ApenasClaudeCode)
+      [switch]$ClaudeCode, [switch]$ApenasClaudeCode, [string]$Biblioteca = "", [switch]$PrepararVideo)
+if ($Biblioteca) { if (-not (Test-Path $Biblioteca)) { Write-Host "arquivo da biblioteca não encontrado: $Biblioteca" -ForegroundColor Red; exit 2 }; $Biblioteca = (Resolve-Path $Biblioteca).Path }
 if ($ApenasClaudeCode) { $ClaudeCode = $true; $SemApp = $true; $SemCredenciais = $true; $SemAbrir = $true }
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -169,6 +172,13 @@ if ($ApenasClaudeCode) {
   if ($LASTEXITCODE -ne 0) { Die 'o setup falhou; rode: neuro-harness doctor' }
 }
 
+if ($Biblioteca) {
+  Say 'Importando a sua biblioteca (perfis, temas, estilos e áudios)'
+  if ($ApenasClaudeCode) { node $Cli claude instalar | Out-Null }
+  node $Cli biblioteca importar $Biblioteca
+  if ($LASTEXITCODE -ne 0) { Warn "a biblioteca não foi importada (rode: neuro-harness biblioteca importar $Biblioteca)" }
+}
+
 if ($ClaudeCode) {
   Say 'Instalando os especialistas no Claude Code'
   node $Cli claude instalar
@@ -180,6 +190,12 @@ $opencode = Join-Path $env:USERPROFILE '.local\share\opencode\auth.json'
 if (-not $SemCredenciais -and ((Test-Path $hermes) -or (Test-Path $opencode))) {
   Say 'Importando chaves de API do Hermes e do OpenCode'
   node $Cli credenciais
+}
+
+if ($PrepararVideo) {
+  Say 'Preparando a edição de vídeo (motor, navegador do render, skills e fontes)'
+  node $Cli preparar
+  if ($LASTEXITCODE -ne 0) { Warn 'a preparação deixou pendências acima (confira com: neuro-harness preparar)' }
 }
 
 # ---------------------------------------------------------------- 4. app desktop

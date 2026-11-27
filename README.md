@@ -47,9 +47,27 @@ O endereço `harness.neuros.my` serve os scripts deste repositório. Se ele esti
 | `--sem-abrir` | `-SemAbrir` | Não abre o painel no fim |
 | `--versao vX.Y.Z` | `-Versao vX.Y.Z` | Uma versão específica |
 | `--chave nh_…` | `-Chave nh_…` | Usa a chave de instalação da sua conta Neuro |
+| `--biblioteca <arquivo>` | `-Biblioteca <arquivo>` | Importa perfis, temas, estilos e áudios exportados de outro computador (`neuro-harness biblioteca exportar`) |
+| `--preparar-video` | `-PrepararVideo` | Já deixa a edição de vídeo pronta: motor Remotion, navegador do render, skills de apoio e fontes |
 | `--github` | `-GitHub` | Desenvolvimento: clona os repositórios públicos, sem a conta Neuro |
 
 No `curl … | bash`, passe as opções depois de `bash -s --`. No npm: `npx @oneuros/harness --sem-app`.
+
+## Outro computador com a mesma biblioteca
+
+No computador de origem:
+
+```bash
+neuro-harness biblioteca exportar
+```
+
+Isso gera `~/Neuro/exportacoes/neuro-biblioteca-<data>.tgz` com os seus perfis, temas, estilos e o banco de áudio (sem chaves e sem dados de campanhas). No outro computador, instale já importando:
+
+```bash
+npx @oneuros/harness claude --biblioteca neuro-biblioteca-<data>.tgz --preparar-video
+```
+
+Ou, com o Neuro Harness já instalado: `neuro-harness biblioteca importar <arquivo>`. Os perfis e temas da sua conta também chegam sozinhos em qualquer computador ligado a ela.
 
 ## Com o Neuro Harness instalado
 

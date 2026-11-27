@@ -13,6 +13,9 @@
 #   --claude-code       instala também os especialistas no Claude Code (plugins neuro-harness,
 #                       neuro-mv-edit e neuro-ads-manager, marketplace local, sem GitHub)
 #   --apenas-claude-code  só os plugins do Claude Code: sem o app, sem o painel e sem o runtime do Harness
+#   --biblioteca <arq>  importa perfis, temas, estilos e áudios exportados de outro computador
+#                       (neuro-harness biblioteca exportar)
+#   --preparar-video    já deixa a edição de vídeo pronta (motor Remotion, navegador do render, fontes)
 #
 # Este script é público e não contém segredos. Por padrão ele usa a sua conta Neuro: se este
 # computador ainda não tiver uma chave, o navegador abre para você confirmar o acesso.
@@ -23,7 +26,7 @@ REPO="monrars1995/oneuros-harness"
 NH_HOME="${NEURO_HARNESS_HOME:-$HOME/.neuro-harness}"
 SRC="$NH_HOME/src"
 SITE="${NEURO_HARNESS_SITE:-https://harness.neuros.my}"
-WITH_APP=1; VERSION=""; CREDS=1; OPEN=1; KEY="${NEURO_HARNESS_CHAVE:-}"; FORCE_GH=0; CLAUDE=0; ONLY_CLAUDE=0
+WITH_APP=1; VERSION=""; CREDS=1; OPEN=1; KEY="${NEURO_HARNESS_CHAVE:-}"; FORCE_GH=0; CLAUDE=0; ONLY_CLAUDE=0; BIB=""; PREP=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --sem-app) WITH_APP=0 ;;
@@ -33,12 +36,20 @@ while [ $# -gt 0 ]; do
     --chave) KEY="${2:-}"; shift ;;
     --github) FORCE_GH=1 ;;
     --claude-code) CLAUDE=1 ;;
+    --biblioteca) BIB="${2:-}"; shift ;;
+    --preparar-video) PREP=1 ;;
     --apenas-claude-code|--so-claude-code) CLAUDE=1; ONLY_CLAUDE=1; WITH_APP=0; CREDS=0; OPEN=0 ;;
-    -h|--help) sed -n '2,19p' "$0" 2>/dev/null || true; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" 2>/dev/null || true; exit 0 ;;
     *) echo "opção desconhecida: $1" >&2; exit 2 ;;
   esac
   shift
 done
+
+# caminho da biblioteca fixado antes de qualquer cd
+if [ -n "$BIB" ]; then
+  [ -f "$BIB" ] || { echo "arquivo da biblioteca não encontrado: $BIB" >&2; exit 2; }
+  BIB="$(cd "$(dirname "$BIB")" && pwd)/$(basename "$BIB")"
+fi
 
 B=$'\033[1m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; D=$'\033[90m'; X=$'\033[0m'
 say()  { printf '%s▸ %s%s\n' "$B" "$*" "$X"; }
@@ -238,6 +249,12 @@ else
   node "$SRC/lib/cli.js" setup
 fi
 
+if [ -n "$BIB" ]; then
+  say "Importando a sua biblioteca (perfis, temas, estilos e áudios)"
+  if [ "$ONLY_CLAUDE" = 1 ]; then node "$SRC/lib/cli.js" claude instalar >/dev/null 2>&1 || true; fi
+  node "$SRC/lib/cli.js" biblioteca importar "$BIB" || warn "a biblioteca não foi importada (rode: neuro-harness biblioteca importar \"$BIB\")"
+fi
+
 if [ "$CLAUDE" = 1 ]; then
   say "Instalando os especialistas no Claude Code"
   node "$SRC/lib/cli.js" claude instalar || warn "os plugins do Claude Code não foram instalados (rode: neuro-harness claude instalar)"
@@ -246,6 +263,11 @@ fi
 if [ "$CREDS" = 1 ] && { [ -f "$HOME/.hermes/.env" ] || [ -f "$HOME/.local/share/opencode/auth.json" ]; }; then
   say "Importando chaves de API do Hermes e do OpenCode"
   node "$SRC/lib/cli.js" credenciais || warn "não foi possível importar as chaves agora (rode: neuro-harness credenciais)"
+fi
+
+if [ "$PREP" = 1 ]; then
+  say "Preparando a edição de vídeo (motor, navegador do render, skills e fontes)"
+  node "$SRC/lib/cli.js" preparar || warn "a preparação deixou pendências acima (confira com: neuro-harness preparar)"
 fi
 
 # ---------------------------------------------------------------- 4. app desktop (macOS Apple Silicon)
